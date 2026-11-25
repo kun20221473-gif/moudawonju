@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>모으다 원주</title>
-  <!-- Leaflet CSS & JS -->
+  <!-- Leaflet CSS & JS (지도) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
@@ -30,24 +30,22 @@
     .filter-btn { flex: 1; padding: 10px; border: 1px solid #cbd5e0; background: white; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: center; }
     .filter-btn.active { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
 
-    /* 지도 영역 */
-    #map { width: 100%; height: 220px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); z-index: 1; }
+    /* 지도 */
+    #map { width: 100%; height: 220px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
-    /* 행사 카드 리스트 */
+    /* 행사 목록 */
     .event-card { background: var(--card-bg); border-radius: 12px; overflow: hidden; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; }
-    .event-img { width: 100%; height: 140px; object-fit: cover; background-color: #edf2f7; }
+    .event-img { width: 100%; height: 140px; object-fit: cover; }
     .event-content { padding: 14px; }
     .event-cat { font-size: 0.75rem; color: #718096; font-weight: bold; }
     .event-name { font-size: 1rem; font-weight: bold; margin: 4px 0; }
 
-    /* 상세 정보 모달 */
+    /* 모달 상세페이지 */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: flex-end; }
     .modal.open { display: flex; }
     .modal-content { background: white; width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; max-height: 85vh; overflow-y: auto; padding: 20px; animation: slideUp 0.3s ease-out; }
     @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     .close-btn { float: right; font-size: 1.5rem; border: none; background: none; cursor: pointer; }
-    
-    /* 상세 정보 탭 */
     .tab-group { display: flex; border-bottom: 2px solid #edf2f7; margin: 16px 0; }
     .tab-btn { flex: 1; padding: 10px; border: none; background: none; font-weight: bold; color: #a0aec0; cursor: pointer; text-align: center; }
     .tab-btn.active { color: var(--primary-color); border-bottom: 2px solid var(--primary-color); margin-bottom: -2px; }
@@ -60,22 +58,18 @@
   <header>모으다 원주</header>
 
   <div class="container">
-    <!-- 1단계: D-Day 배너 -->
     <div id="banner-area"></div>
 
-    <!-- 2단계: 카테고리 필터 -->
     <div class="filter-group">
       <button class="filter-btn active" onclick="filterEvents('전체')">전체</button>
       <button class="filter-btn" onclick="filterEvents('축제/영화제')">축제/영화제</button>
       <button class="filter-btn" onclick="filterEvents('팝업/행사')">팝업/행사</button>
     </div>
 
-    <!-- 지도 및 리스트 -->
     <div id="map"></div>
     <div id="event-list"></div>
   </div>
 
-  <!-- 3단계: 상세 정보 모달 -->
   <div class="modal" id="detail-modal">
     <div class="modal-content">
       <button class="close-btn" onclick="closeModal()">&times;</button>
@@ -98,8 +92,7 @@
 
   <script>
     let eventsData = [];
-    let map = null;
-    let markers = [];
+    let map, markers = [];
 
     window.onload = async () => {
       initMap();
@@ -125,22 +118,13 @@
       }
     }
 
-    function formatDate(dateStr) {
-      if (!dateStr || String(dateStr).length < 8) return "";
-      const str = String(dateStr);
-      return `${str.substring(0,4)}.${str.substring(4,6)}.${str.substring(6,8)}`;
-    }
-
     function getDDay(targetDateStr) {
-      if (!targetDateStr || String(targetDateStr).length < 8) return "D-DAY";
-      const str = String(targetDateStr);
-      const y = parseInt(str.substring(0, 4));
-      const m = parseInt(str.substring(4, 6)) - 1;
-      const d = parseInt(str.substring(6, 8));
+      if (!targetDateStr) return "D-DAY";
+      const cleanDate = String(targetDateStr).replace(/-/g, '');
+      const y = parseInt(cleanDate.substring(0, 4));
+      const m = parseInt(cleanDate.substring(4, 6)) - 1;
+      const d = parseInt(cleanDate.substring(6, 8));
       const target = new Date(y, m, d);
-      
-      if (isNaN(target.getTime())) return "D-DAY";
-
       const today = new Date();
       today.setHours(0,0,0,0);
       const diff = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
@@ -148,18 +132,14 @@
     }
 
     function renderBanner() {
-      const bannerArea = document.getElementById('banner-area');
-      if (!eventsData || eventsData.length === 0) {
-        bannerArea.innerHTML = '';
-        return;
-      }
+      if (eventsData.length === 0) return;
       const highlight = eventsData[0];
       const dday = getDDay(highlight.startDate);
-      bannerArea.innerHTML = `
+      document.getElementById('banner-area').innerHTML = `
         <div class="banner-card" onclick="openModal('${highlight.id}')">
           <span class="banner-badge">사전예약 ${dday}</span>
           <div class="banner-title">${highlight.title}</div>
-          <div class="banner-date">기간: ${formatDate(highlight.startDate)} ~ ${formatDate(highlight.endDate)}</div>
+          <div class="banner-date">기간: ${highlight.startDate} ~ ${highlight.endDate}</div>
         </div>
       `;
     }
@@ -168,18 +148,10 @@
       markers.forEach(m => map.removeLayer(m));
       markers = [];
       data.forEach(item => {
-        if (item.lat && item.lng) {
-          const marker = L.marker([item.lat, item.lng]).addTo(map);
-          marker.bindPopup(`
-            <div style="font-size:12px;">
-              <b>${item.title}</b><br>
-              <button onclick="openModal('${item.id}')" style="margin-top:6px; padding:3px 8px; background:#3182ce; color:white; border:none; border-radius:4px; cursor:pointer;">상세보기</button>
-            </div>
-          `);
-          markers.push(marker);
-        }
+        const marker = L.marker([item.lat, item.lng]).addTo(map);
+        marker.bindPopup(`<b>${item.title}</b><br><button onclick="openModal('${item.id}')" style="margin-top:5px; padding:2px 6px;">상세보기</button>`);
+        markers.push(marker);
       });
-      setTimeout(() => map.invalidateSize(), 200);
     }
 
     function filterEvents(category) {
@@ -193,13 +165,13 @@
 
     function renderList(data) {
       const container = document.getElementById('event-list');
-      if (!data || data.length === 0) {
+      if (data.length === 0) {
         container.innerHTML = '<p style="text-align:center; padding:20px; color:#a0aec0;">진행 중인 행사가 없습니다.</p>';
         return;
       }
       container.innerHTML = data.map(item => `
         <div class="event-card" onclick="openModal('${item.id}')">
-          <img src="${item.image}" class="event-img" alt="${item.title}" onerror="this.src='https://via.placeholder.com/400x200?text=모으다+원주'">
+          <img src="${item.image}" class="event-img" alt="${item.title}" onerror="this.src='https://placehold.co/400x200?text=Mouda+Wonju'">
           <div class="event-content">
             <span class="event-cat">${item.category} | ${getDDay(item.startDate)}</span>
             <div class="event-name">${item.title}</div>
@@ -212,7 +184,7 @@
       const item = eventsData.find(e => String(e.id) === String(id));
       if (!item) return;
       document.getElementById('modal-title').innerText = item.title;
-      document.getElementById('modal-date').innerText = `행사기간: ${formatDate(item.startDate)} ~ ${formatDate(item.endDate)}`;
+      document.getElementById('modal-date').innerText = `행사기간: ${item.startDate} ~ ${item.endDate}`;
       document.getElementById('modal-transit').innerText = item.transitInfo;
       document.getElementById('modal-parking').innerText = item.parkingInfo;
       document.getElementById('detail-modal').classList.add('open');
@@ -225,9 +197,8 @@
 
     function switchTab(tabName) {
       const isTransit = tabName === 'transit';
-      const tabs = document.querySelectorAll('.tab-btn');
-      tabs[0].classList.toggle('active', isTransit);
-      tabs[1].classList.toggle('active', !isTransit);
+      document.querySelectorAll('.tab-btn')[0].classList.toggle('active', isTransit);
+      document.querySelectorAll('.tab-btn')[1].classList.toggle('active', !isTransit);
       document.getElementById('transit-tab').classList.toggle('active', isTransit);
       document.getElementById('parking-tab').classList.toggle('active', !isTransit);
     }
